@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Yiji Focus Float</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <section class="float-card">
+        <div class="hero">
+          <div class="hero-copy">
+            <p class="eyebrow">Local ADHD Focus Float</p>
+            <h1>双击一姬，替今天记一笔</h1>
+            <p class="subcopy">
+              双击一姬打开任务选项，点一下就自动开始计时；再次双击就收尾。
+              页面只在你明显离开键盘鼠标、而且没有进行中的任务时提醒。
+            </p>
+            <div id="reminder-card" class="reminder-card" hidden>
+              <strong id="reminder-title"></strong>
+              <p id="reminder-body"></p>
+              <span>双击一姬才能解除这条提醒。</span>
+            </div>
+          </div>
+
+          <button id="pet-toggle" class="pet-button" type="button" aria-live="polite">
+            <span class="pet-face">
+              <img class="pet-art" src="./assets/yiji-idle.gif" alt="一姬待机动画" />
+            </span>
+            <span class="pet-label">双击我开始 / 结束</span>
+            <span class="pet-note">提醒也要双击我才会消失</span>
+          </button>
+        </div>
+
+        <section class="active-panel">
+          <div class="panel-head">
+            <h2>当前状态</h2>
+            <span id="active-state" class="status-chip idle">待命</span>
+          </div>
+          <div id="active-task" class="active-task empty">
+            <p>双击一姬，弹出任务选项，选一个就自动开始计时。</p>
+          </div>
+        </section>
+
+        <section class="summary-grid">
+          <article class="summary-card">
+            <span class="summary-label">今天完成</span>
+            <strong id="summary-count">0</strong>
+          </article>
+          <article class="summary-card">
+            <span class="summary-label">累计专注</span>
+            <strong id="summary-minutes">0</strong>
+          </article>
+          <article class="summary-card">
+            <span class="summary-label">最长一段</span>
+            <strong id="summary-longest">0m</strong>
+          </article>
+        </section>
+
+        <section class="encouragement-panel">
+          <div class="panel-head">
+            <h2>一姬播报</h2>
+          </div>
+          <div id="encouragement" class="encouragement-copy"></div>
+        </section>
+
+        <section class="timeline-panel">
+          <div class="panel-head">
+            <h2>Today's Schedule</h2>
+            <div class="panel-actions">
+              <button id="export-json" type="button" class="ghost-button">导出 JSON</button>
+              <button id="reset-day" type="button" class="ghost-button danger">清空今天</button>
+            </div>
+          </div>
+          <p class="timeline-note">
+            记录默认只留在这台电脑这个浏览器里，不会跑去手机上。
+          </p>
+          <ol id="timeline" class="timeline"></ol>
+        </section>
+
+        <section class="weekly-panel">
+          <div class="panel-head">
+            <h2>Weekly Report</h2>
+          </div>
+          <div id="weekly-report"></div>
+        </section>
+      </section>
+    </main>
+
+    <dialog id="start-dialog" class="task-dialog">
+      <form method="dialog" class="dialog-form">
+        <h2>今天这一段要干嘛？</h2>
+        <p class="dialog-copy">选一个，一姬立刻替你开始计时。</p>
+        <div id="start-options" class="start-options">
+          <button type="button" class="start-option moss" data-category="reading">读文献</button>
+          <button type="button" class="start-option blue" data-category="cleaning">洗数据</button>
+          <button type="button" class="start-option berry" data-category="modeling">做模型</button>
+          <button type="button" class="start-option gold" data-category="writing">写论文</button>
+          <button type="button" class="start-option pink" data-category="fun">娱乐</button>
+          <button type="button" class="start-option orange" data-category="food">饭饭</button>
+          <button type="button" class="start-option green" data-category="exercise">运动</button>
+          <button type="button" class="start-option lavender" data-category="family">家庭生活</button>
+        </div>
+        <div class="stop-actions">
+          <button type="button" id="cancel-start" class="ghost-button">先不记</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog id="stop-dialog" class="task-dialog">
+      <form id="stop-form" method="dialog" class="dialog-form">
+        <h2>收尾一下这一段</h2>
+        <p id="stop-dialog-title" class="stop-title"></p>
+        <label>
+          <span>这一段做成了什么？</span>
+          <textarea
+            id="task-outcome"
+            name="outcome"
+            rows="3"
+            maxlength="280"
+            placeholder="比如：把回归表跑通了、读完两篇文献、把晚饭做好啦。"
+          ></textarea>
+        </label>
+        <label>
+          <span>感觉如何？</span>
+          <input
+            id="task-feeling"
+            name="feeling"
+            type="text"
+            maxlength="120"
+            placeholder="比如：前十分钟很难，后面顺起来了。"
+          />
+        </label>
+        <div class="stop-actions">
+          <button type="button" id="cancel-stop" class="ghost-button">继续进行中</button>
+          <button type="submit" class="primary-button">保存这段成果</button>
+        </div>
+      </form>
+    </dialog>
+
+    <script src="./app.js"></script>
+  </body>
+</html>

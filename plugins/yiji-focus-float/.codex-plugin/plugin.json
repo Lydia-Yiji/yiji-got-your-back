@@ -1,0 +1,44 @@
+{
+  "name": "yiji-focus-float",
+  "version": "0.1.0",
+  "description": "A local-first ADHD-friendly daily task float concept built around a pet interaction loop.",
+  "author": {
+    "name": "Jingyuan Wang",
+    "email": "local-only@example.invalid",
+    "url": "https://example.invalid/yiji-focus-float"
+  },
+  "homepage": "https://example.invalid/yiji-focus-float",
+  "repository": "https://example.invalid/yiji-focus-float",
+  "license": "Proprietary",
+  "keywords": [
+    "adhd",
+    "focus",
+    "task-tracker",
+    "daily-schedule",
+    "pet"
+  ],
+  "apps": "./.app.json",
+  "interface": {
+    "displayName": "Yiji Focus Float",
+    "shortDescription": "A local-first pet-shaped task float for daily momentum",
+    "longDescription": "Yiji Focus Float is a local-first ADHD task float concept: double-click the mascot to start a task, double-click again to stop it, then review your day as a satisfying timeline of progress.",
+    "developerName": "Jingyuan Wang",
+    "category": "Productivity",
+    "capabilities": [
+      "Interactive",
+      "Write"
+    ],
+    "websiteURL": "https://example.invalid/yiji-focus-float",
+    "privacyPolicyURL": "https://example.invalid/yiji-focus-float/privacy",
+    "termsOfServiceURL": "https://example.invalid/yiji-focus-float/terms",
+    "defaultPrompt": [
+      "Open my local ADHD task float",
+      "Show today's task timeline",
+      "Start or stop a focus block"
+    ],
+    "brandColor": "#2E6B54",
+    "composerIcon": "./assets/icon.png",
+    "logo": "./assets/logo.png",
+    "screenshots": []
+  }
+}

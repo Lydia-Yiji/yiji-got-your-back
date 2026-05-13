@@ -4,7 +4,7 @@
 
 `Yiji Focus Float` 会让一姬蹲在你的桌面上，陪你开始任务、结束任务，并把一天做过的事情长成一份看得见的时间表。
 
-![一姬使用说明](plugins/yiji-focus-float/share-kit/yiji-guide-long.png)
+![一姬使用说明](plugins/yiji-focus-float/share-kit/yiji-guide-long-v2.png)
 
 ## 它现在能做什么
 

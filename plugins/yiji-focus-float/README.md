@@ -66,7 +66,7 @@ plugins/yiji-focus-float/dist/Yiji Focus Float.app
 - `plugins/yiji-focus-float/share-kit/chapter-02-reminders.png`
 - `plugins/yiji-focus-float/share-kit/chapter-03-wrapup-and-today.png`
 - `plugins/yiji-focus-float/share-kit/chapter-04-today-week.png`
-- `plugins/yiji-focus-float/share-kit/yiji-guide-long.png`
+- `plugins/yiji-focus-float/share-kit/yiji-guide-long-v2.png`
 
 如果要重生成：
 

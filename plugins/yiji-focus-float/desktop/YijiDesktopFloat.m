@@ -119,6 +119,12 @@ static CGEventRef YijiInputEventTapCallback(CGEventTapProxy proxy, CGEventType t
   return [formatter stringFromDate:date];
 }
 
+- (NSDate *)dateForDayKey:(NSString *)dayKey {
+  NSDateFormatter *formatter = [[NSDateFormatter alloc] init];
+  formatter.dateFormat = @"yyyy-MM-dd";
+  return [formatter dateFromString:dayKey];
+}
+
 - (void)drawRect:(NSRect)dirtyRect {
   [super drawRect:dirtyRect];
   [[NSColor clearColor] setFill];
@@ -159,51 +165,37 @@ static CGEventRef YijiInputEventTapCallback(CGEventTapProxy proxy, CGEventType t
     }
   }
 
-  NSArray<NSDictionary *> *entries = self.visibleDayKeys.count > 0 ? self.entriesByDay[self.visibleDayKeys.firstObject] : @[];
+  NSString *dayKey = self.visibleDayKeys.count > 0 ? self.visibleDayKeys.firstObject : nil;
+  NSArray<NSDictionary *> *entries = dayKey != nil ? self.entriesByDay[dayKey] : @[];
   NSArray<NSDictionary *> *sortedEntries = [entries sortedArrayUsingComparator:^NSComparisonResult(NSDictionary *a, NSDictionary *b) {
     return [a[@"start"] compare:b[@"start"]];
   }];
-  NSMutableArray<NSNumber *> *laneEndTimes = [NSMutableArray array];
+  NSDate *dayDate = dayKey != nil ? [self dateForDayKey:dayKey] : nil;
+  NSDate *visibleDayStart = dayDate != nil ? [dayDate dateByAddingTimeInterval:dayStartHour * 3600.0] : nil;
+  NSDate *visibleDayEnd = dayDate != nil ? [dayDate dateByAddingTimeInterval:dayEndHour * 3600.0] : nil;
+  CGFloat nextAvailableY = topPadding;
 
   for (NSDictionary *entry in sortedEntries) {
     NSDate *startDate = [NSDate dateWithTimeIntervalSince1970:[entry[@"start"] doubleValue]];
     NSDate *endDate = [NSDate dateWithTimeIntervalSince1970:[entry[@"end"] doubleValue]];
-    NSCalendar *calendar = [NSCalendar currentCalendar];
-    NSDateComponents *startComp = [calendar components:NSCalendarUnitHour | NSCalendarUnitMinute fromDate:startDate];
-    NSDateComponents *endComp = [calendar components:NSCalendarUnitHour | NSCalendarUnitMinute fromDate:endDate];
-    CGFloat startHour = startComp.hour + (startComp.minute / 60.0);
-    CGFloat endHour = endComp.hour + (endComp.minute / 60.0);
-    if (endHour <= startHour) {
-      endHour = startHour + (MAX(1.0, [endDate timeIntervalSinceDate:startDate] / 3600.0));
-    }
-    if (endHour < dayStartHour || startHour > dayEndHour) {
+    NSDate *visibleStart = visibleDayStart != nil ? ([startDate compare:visibleDayStart] == NSOrderedAscending ? visibleDayStart : startDate) : startDate;
+    NSDate *visibleEnd = visibleDayEnd != nil ? ([endDate compare:visibleDayEnd] == NSOrderedDescending ? visibleDayEnd : endDate) : endDate;
+    if ([visibleEnd compare:visibleStart] != NSOrderedDescending) {
       continue;
     }
-    startHour = MAX(startHour, dayStartHour);
-    endHour = MIN(endHour, dayEndHour);
-    NSInteger laneIndex = 0;
-    BOOL placed = NO;
-    for (NSInteger i = 0; i < (NSInteger)laneEndTimes.count; i += 1) {
-      if (startHour >= laneEndTimes[i].doubleValue) {
-        laneIndex = i;
-        laneEndTimes[i] = @(endHour);
-        placed = YES;
-        break;
-      }
+    NSTimeInterval startOffset = [visibleStart timeIntervalSinceDate:visibleDayStart];
+    NSTimeInterval endOffset = [visibleEnd timeIntervalSinceDate:visibleDayStart];
+    CGFloat desiredY = topPadding + (startOffset / 3600.0) * hourHeight;
+    CGFloat y = MAX(desiredY, nextAvailableY);
+    CGFloat height = MAX(40.0, ((endOffset - startOffset) / 3600.0) * hourHeight);
+    CGFloat maxBlockBottom = topPadding + gridHeight - 4.0;
+    if (y >= maxBlockBottom) {
+      continue;
     }
-    if (!placed) {
-      laneIndex = laneEndTimes.count;
-      [laneEndTimes addObject:@(endHour)];
+    if (y + height > maxBlockBottom) {
+      height = maxBlockBottom - y;
     }
-
-    CGFloat y = topPadding + (startHour - dayStartHour) * hourHeight;
-    CGFloat height = MAX(38.0, (endHour - startHour) * hourHeight);
-    NSInteger laneCount = MAX(1, (NSInteger)laneEndTimes.count);
-    CGFloat laneGap = 4.0;
-    CGFloat usableWidth = columnRect.size.width - 12.0;
-    CGFloat blockWidth = floor((usableWidth - laneGap * (laneCount - 1)) / laneCount);
-    CGFloat x = leftLabelWidth + 6.0 + laneIndex * (blockWidth + laneGap);
-    NSRect blockRect = NSInsetRect(NSMakeRect(x, y, blockWidth, height), 0, 1.5);
+    NSRect blockRect = NSInsetRect(NSMakeRect(leftLabelWidth + 6.0, y, columnRect.size.width - 12.0, height), 0, 1.5);
     NSBezierPath *block = [NSBezierPath bezierPathWithRoundedRect:blockRect xRadius:8 yRadius:8];
     [[self colorForLabel:entry[@"label"] alpha:1.0] setFill];
     [block fill];
@@ -216,9 +208,10 @@ static CGEventRef YijiInputEventTapCallback(CGEventTapProxy proxy, CGEventType t
       NSForegroundColorAttributeName: [NSColor colorWithCalibratedRed:0.26 green:0.30 blue:0.28 alpha:1.0]
     };
     NSString *title = entry[@"label"] ?: @"";
-    NSString *timeText = [NSString stringWithFormat:@"%@-%@", [self shortTimeString:startDate], [self shortTimeString:endDate]];
+    NSString *timeText = [NSString stringWithFormat:@"%@-%@", [self shortTimeString:visibleStart], [self shortTimeString:visibleEnd]];
     [title drawInRect:NSMakeRect(blockRect.origin.x + 7, blockRect.origin.y + blockRect.size.height - 18, blockRect.size.width - 14, 14) withAttributes:titleAttrs];
     [timeText drawInRect:NSMakeRect(blockRect.origin.x + 7, blockRect.origin.y + 7, blockRect.size.width - 14, 12) withAttributes:timeAttrs];
+    nextAvailableY = NSMaxY(blockRect) + 4.0;
   }
 }
 
@@ -227,7 +220,7 @@ static CGEventRef YijiInputEventTapCallback(CGEventTapProxy proxy, CGEventType t
   CGFloat dayEndHour = 23.0;
   CGFloat visibleHours = dayEndHour - dayStartHour;
   CGFloat leftPadding = 12.0;
-  CGFloat topPadding = 28.0;
+  CGFloat topPadding = 34.0;
   CGFloat bottomPadding = 12.0;
   CGFloat availableWidth = self.bounds.size.width - leftPadding * 2;
   CGFloat columnGap = 10.0;
@@ -254,29 +247,45 @@ static CGEventRef YijiInputEventTapCallback(CGEventTapProxy proxy, CGEventType t
     [border setLineWidth:1.0];
     [border stroke];
 
-    NSArray<NSDictionary *> *entries = self.entriesByDay[dayKey] ?: @[];
+    NSArray<NSDictionary *> *entries = [self.entriesByDay[dayKey] sortedArrayUsingComparator:^NSComparisonResult(NSDictionary *a, NSDictionary *b) {
+      return [a[@"start"] compare:b[@"start"]];
+    }] ?: @[];
+    NSDate *dayDate = [self dateForDayKey:dayKey];
+    NSDate *visibleDayStart = dayDate != nil ? [dayDate dateByAddingTimeInterval:dayStartHour * 3600.0] : nil;
+    NSDate *visibleDayEnd = dayDate != nil ? [dayDate dateByAddingTimeInterval:dayEndHour * 3600.0] : nil;
+    CGFloat nextAvailableY = topPadding + 4.0;
     for (NSDictionary *entry in entries) {
       NSDate *startDate = [NSDate dateWithTimeIntervalSince1970:[entry[@"start"] doubleValue]];
       NSDate *endDate = [NSDate dateWithTimeIntervalSince1970:[entry[@"end"] doubleValue]];
-      NSCalendar *calendar = [NSCalendar currentCalendar];
-      NSDateComponents *startComp = [calendar components:NSCalendarUnitHour | NSCalendarUnitMinute fromDate:startDate];
-      NSDateComponents *endComp = [calendar components:NSCalendarUnitHour | NSCalendarUnitMinute fromDate:endDate];
-      CGFloat startHour = startComp.hour + (startComp.minute / 60.0);
-      CGFloat endHour = endComp.hour + (endComp.minute / 60.0);
-      if (endHour <= startHour) {
-        endHour = startHour + (MAX(1.0, [endDate timeIntervalSinceDate:startDate] / 3600.0));
-      }
-      if (endHour < dayStartHour || startHour > dayEndHour) {
+      NSDate *visibleStart = visibleDayStart != nil ? ([startDate compare:visibleDayStart] == NSOrderedAscending ? visibleDayStart : startDate) : startDate;
+      NSDate *visibleEnd = visibleDayEnd != nil ? ([endDate compare:visibleDayEnd] == NSOrderedDescending ? visibleDayEnd : endDate) : endDate;
+      if ([visibleEnd compare:visibleStart] != NSOrderedDescending) {
         continue;
       }
-      startHour = MAX(startHour, dayStartHour);
-      endHour = MIN(endHour, dayEndHour);
-      CGFloat y = topPadding + (startHour - dayStartHour) * hourHeight;
-      CGFloat height = MAX(6.0, (endHour - startHour) * hourHeight);
+      NSTimeInterval startOffset = [visibleStart timeIntervalSinceDate:visibleDayStart];
+      NSTimeInterval endOffset = [visibleEnd timeIntervalSinceDate:visibleDayStart];
+      CGFloat desiredY = topPadding + (startOffset / 3600.0) * hourHeight;
+      CGFloat y = MAX(desiredY, nextAvailableY);
+      CGFloat height = MAX(26.0, ((endOffset - startOffset) / 3600.0) * hourHeight);
+      CGFloat maxBlockBottom = topPadding + gridHeight - 4.0;
+      if (y >= maxBlockBottom) {
+        continue;
+      }
+      if (y + height > maxBlockBottom) {
+        height = maxBlockBottom - y;
+      }
       NSRect blockRect = NSInsetRect(NSMakeRect(x + 4, y, columnWidth - 8, height), 0, 1);
       NSBezierPath *block = [NSBezierPath bezierPathWithRoundedRect:blockRect xRadius:8 yRadius:8];
       [[self colorForLabel:entry[@"label"] alpha:1.0] setFill];
       [block fill];
+      if (height >= 18.0) {
+        NSDictionary *titleAttrs = @{
+          NSFontAttributeName: [NSFont systemFontOfSize:11 weight:NSFontWeightSemibold],
+          NSForegroundColorAttributeName: [NSColor colorWithCalibratedRed:0.16 green:0.18 blue:0.17 alpha:1.0]
+        };
+        [entry[@"label"] drawInRect:NSMakeRect(blockRect.origin.x + 6, blockRect.origin.y + 5, blockRect.size.width - 12, MAX(14.0, blockRect.size.height - 10)) withAttributes:titleAttrs];
+      }
+      nextAvailableY = NSMaxY(blockRect) + 3.0;
     }
   }];
 }
@@ -300,8 +309,8 @@ static CGEventRef YijiInputEventTapCallback(CGEventTapProxy proxy, CGEventType t
 @property (nonatomic, strong) NSView *overviewOptionsView;
 @property (nonatomic, strong) NSView *startOptionsView;
 @property (nonatomic, strong) NSView *stopFormView;
-@property (nonatomic, strong) NSTextField *outcomeField;
-@property (nonatomic, strong) NSTextField *feelingField;
+@property (nonatomic, strong) NSTextView *outcomeField;
+@property (nonatomic, strong) NSTextView *feelingField;
 @property (nonatomic, strong) NSButton *continueButton;
 @property (nonatomic, strong) NSButton *finishButton;
 @property (nonatomic, strong) NSTimer *heartbeatTimer;
@@ -612,22 +621,20 @@ static CGEventRef YijiInputEventTapCallback(CGEventTapProxy proxy, CGEventType t
   outcomeLabel.textColor = [NSColor colorWithCalibratedRed:0.46 green:0.48 blue:0.43 alpha:1.0];
   [self.stopFormView addSubview:outcomeLabel];
 
-  self.outcomeField = [[NSTextField alloc] initWithFrame:NSMakeRect(0, 126, 188, 30)];
-  self.outcomeField.placeholderString = @"这一段做成了什么";
-  self.outcomeField.bezelStyle = NSTextFieldRoundedBezel;
-  self.outcomeField.font = [NSFont systemFontOfSize:12];
-  [self.stopFormView addSubview:self.outcomeField];
+  NSTextView *outcomeTextView = nil;
+  NSScrollView *outcomeScrollView = [self textInputWithFrame:NSMakeRect(0, 112, 188, 44) textView:&outcomeTextView];
+  self.outcomeField = outcomeTextView;
+  [self.stopFormView addSubview:outcomeScrollView];
 
   NSTextField *feelingLabel = [self labelWithFrame:NSMakeRect(0, 84, 188, 16) fontSize:11 weight:NSFontWeightMedium];
   feelingLabel.stringValue = @"感觉如何";
   feelingLabel.textColor = [NSColor colorWithCalibratedRed:0.46 green:0.48 blue:0.43 alpha:1.0];
   [self.stopFormView addSubview:feelingLabel];
 
-  self.feelingField = [[NSTextField alloc] initWithFrame:NSMakeRect(0, 42, 188, 30)];
-  self.feelingField.placeholderString = @"感觉如何";
-  self.feelingField.bezelStyle = NSTextFieldRoundedBezel;
-  self.feelingField.font = [NSFont systemFontOfSize:12];
-  [self.stopFormView addSubview:self.feelingField];
+  NSTextView *feelingTextView = nil;
+  NSScrollView *feelingScrollView = [self textInputWithFrame:NSMakeRect(0, 28, 188, 44) textView:&feelingTextView];
+  self.feelingField = feelingTextView;
+  [self.stopFormView addSubview:feelingScrollView];
 
   self.continueButton = [self bubbleButtonWithFrame:NSMakeRect(0, 0, 88, 30)
                                               title:@"继续"
@@ -647,7 +654,7 @@ static CGEventRef YijiInputEventTapCallback(CGEventTapProxy proxy, CGEventType t
 }
 
 - (void)buildReviewPanel {
-  NSRect frame = NSMakeRect(0, 0, 460, 560);
+  NSRect frame = NSMakeRect(0, 0, 720, 680);
   self.reviewPanel = [[NSPanel alloc] initWithContentRect:frame
                                                 styleMask:NSWindowStyleMaskTitled | NSWindowStyleMaskClosable
                                                   backing:NSBackingStoreBuffered
@@ -661,25 +668,60 @@ static CGEventRef YijiInputEventTapCallback(CGEventTapProxy proxy, CGEventType t
   contentView.layer.backgroundColor = [NSColor colorWithCalibratedRed:1.0 green:0.98 blue:0.94 alpha:1.0].CGColor;
   self.reviewPanel.contentView = contentView;
 
-  self.reviewTitleLabel = [self labelWithFrame:NSMakeRect(24, 520, 360, 24) fontSize:22 weight:NSFontWeightSemibold];
+  self.reviewTitleLabel = [self labelWithFrame:NSMakeRect(24, 638, 420, 24) fontSize:22 weight:NSFontWeightSemibold];
   [contentView addSubview:self.reviewTitleLabel];
 
-  NSTextField *subtitle = [self labelWithFrame:NSMakeRect(24, 492, 400, 18) fontSize:12 weight:NSFontWeightRegular];
+  NSTextField *subtitle = [self labelWithFrame:NSMakeRect(24, 610, 520, 18) fontSize:12 weight:NSFontWeightRegular];
   subtitle.stringValue = @"今天和这周的努力，都会在这里长成看得见的战果。";
   subtitle.textColor = [NSColor colorWithCalibratedRed:0.38 green:0.44 blue:0.40 alpha:1.0];
   [contentView addSubview:subtitle];
 
-  self.reviewSummaryLabel = [self labelWithFrame:NSMakeRect(24, 458, 412, 20) fontSize:13 weight:NSFontWeightMedium];
+  self.reviewSummaryLabel = [self labelWithFrame:NSMakeRect(24, 576, 620, 20) fontSize:13 weight:NSFontWeightMedium];
   self.reviewSummaryLabel.textColor = [NSColor colorWithCalibratedRed:0.22 green:0.27 blue:0.24 alpha:1.0];
   [contentView addSubview:self.reviewSummaryLabel];
 
-  self.timelineView = [[YijiTimelineView alloc] initWithFrame:NSMakeRect(24, 24, 412, 420)];
+  self.timelineView = [[YijiTimelineView alloc] initWithFrame:NSMakeRect(24, 24, 672, 532)];
   self.timelineView.wantsLayer = YES;
   self.timelineView.layer.backgroundColor = [NSColor colorWithCalibratedRed:1.0 green:0.995 blue:0.985 alpha:1.0].CGColor;
   self.timelineView.layer.cornerRadius = 18;
   self.timelineView.layer.borderWidth = 1.0;
   self.timelineView.layer.borderColor = [NSColor colorWithCalibratedRed:0.89 green:0.84 blue:0.75 alpha:1.0].CGColor;
   [contentView addSubview:self.timelineView];
+}
+
+- (NSScrollView *)textInputWithFrame:(NSRect)frame textView:(NSTextView * __strong *)textViewOut {
+  NSScrollView *scrollView = [[NSScrollView alloc] initWithFrame:frame];
+  scrollView.borderType = NSNoBorder;
+  scrollView.hasVerticalScroller = NO;
+  scrollView.hasHorizontalScroller = NO;
+  scrollView.autohidesScrollers = YES;
+  scrollView.drawsBackground = YES;
+  scrollView.backgroundColor = NSColor.whiteColor;
+  scrollView.wantsLayer = YES;
+  scrollView.layer.cornerRadius = 10.0;
+  scrollView.layer.borderWidth = 1.0;
+  scrollView.layer.borderColor = [NSColor colorWithCalibratedWhite:0.84 alpha:1.0].CGColor;
+
+  NSTextView *textView = [[NSTextView alloc] initWithFrame:NSMakeRect(0, 0, frame.size.width, frame.size.height)];
+  textView.richText = NO;
+  textView.importsGraphics = NO;
+  textView.allowsUndo = YES;
+  textView.automaticQuoteSubstitutionEnabled = NO;
+  textView.automaticDashSubstitutionEnabled = NO;
+  textView.font = [NSFont systemFontOfSize:12];
+  textView.textColor = [NSColor colorWithCalibratedRed:0.18 green:0.20 blue:0.17 alpha:1.0];
+  textView.backgroundColor = NSColor.whiteColor;
+  textView.horizontallyResizable = NO;
+  textView.verticallyResizable = YES;
+  textView.textContainerInset = NSMakeSize(8, 6);
+  textView.textContainer.widthTracksTextView = YES;
+  textView.textContainer.containerSize = NSMakeSize(frame.size.width, CGFLOAT_MAX);
+  scrollView.documentView = textView;
+
+  if (textViewOut != NULL) {
+    *textViewOut = textView;
+  }
+  return scrollView;
 }
 
 - (NSTextField *)labelWithFrame:(NSRect)frame fontSize:(CGFloat)fontSize weight:(NSFontWeight)weight {
@@ -1011,8 +1053,8 @@ static CGEventRef YijiInputEventTapCallback(CGEventTapProxy proxy, CGEventType t
   self.overviewOptionsView.hidden = YES;
   self.startOptionsView.hidden = YES;
   self.stopFormView.hidden = NO;
-  self.outcomeField.stringValue = @"";
-  self.feelingField.stringValue = @"";
+  self.outcomeField.string = @"";
+  self.feelingField.string = @"";
   self.bubbleView.hidden = NO;
 }
 
@@ -1056,7 +1098,7 @@ static CGEventRef YijiInputEventTapCallback(CGEventTapProxy proxy, CGEventType t
 - (void)finishStop:(id)sender {
   self.shouldQuitAfterAction = NO;
   self.lastEntertainmentReminderTaskId = nil;
-  [self appendCompletedEntryWithOutcome:self.outcomeField.stringValue feeling:self.feelingField.stringValue];
+  [self appendCompletedEntryWithOutcome:self.outcomeField.string feeling:self.feelingField.string];
   self.activeTaskLabel = nil;
   self.activeTaskStart = nil;
   [self recordActivityNow];

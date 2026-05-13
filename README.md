@@ -1,90 +1,86 @@
 # yiji-got-your-back
 
-Yiji Focus Float is a tiny local-first macOS desktop pet for ADHD-friendly task tracking.
+这是一个只在电脑上工作的本地桌面小宠物项目。
 
-You double-click Yiji to start a block, double-click again to wrap it up, and Yiji quietly turns your day into a visible schedule instead of a guilt machine.
+`Yiji Focus Float` 会让一姬蹲在你的桌面上，陪你开始任务、结束任务，并把一天做过的事情长成一份看得见的时间表。
 
-![Yiji guide](plugins/yiji-focus-float/share-kit/yiji-guide-long.png)
+![一姬使用说明](plugins/yiji-focus-float/share-kit/yiji-guide-long.png)
 
-## What it does
+## 它现在能做什么
 
-- Tiny draggable desktop pet that lives above your windows
-- Double-click to start a preset task block
-- Double-click again to end the block and save the result
-- Calm reminders only when you are clearly inactive or stuck in long entertainment time
-- `Done Today` and `Done This Week` views that turn your day into a color-block schedule
-- All records stay local on your computer
+- 一姬以小宠物浮窗的形式悬在桌面上
+- 双击一姬开始一段任务
+- 再双击一次结束这一段
+- 单击可以看 `Done Today` 和 `Done This Week`
+- 只有在明显没动键鼠，或者娱乐太久时，才会轻轻提醒
+- 所有记录都只存在本机，不做手机同步
 
-## Current platform
+## 目前平台
 
-This version is for `macOS` only.
+现在这版只支持 `macOS`。
 
-The desktop pet is built as a native `.app`, not a cross-platform Electron shell, so Windows is not supported yet.
+它是原生 `.app`，不是跨平台壳子，所以 `Windows` 还不能直接运行。
 
-## App location
+## app 在哪里
 
-The built app lives here:
+成品在这里：
 
 `plugins/yiji-focus-float/dist/Yiji Focus Float.app`
 
-If you are building it from source, the main project lives here:
+项目主体在这里：
 
 `plugins/yiji-focus-float/`
 
-## Build from source
+## 怎么重新构建
 
-From the repo root:
+在仓库根目录运行：
 
 ```bash
 ./plugins/yiji-focus-float/scripts/build-app.sh
 ```
 
-Then open:
+然后直接打开：
 
 `plugins/yiji-focus-float/dist/Yiji Focus Float.app`
 
-For quick local testing:
+如果只是本地测试最新版本，可以运行：
 
 ```bash
 ./plugins/yiji-focus-float/scripts/run-desktop.sh
 ```
 
-## Customize it
+## 如果朋友想自己改
 
-Your friends can easily make their own version.
+### 改任务清单
 
-### Change the task list
-
-Edit:
+编辑：
 
 `plugins/yiji-focus-float/desktop/YijiDesktopFloat.m`
 
-Search for:
+搜索：
 
 `self.categories = @[`
 
-That controls the buttons shown in the start bubble.
+这里控制开始气泡里的任务按钮。
 
-### Change Yiji's lines
+### 改一姬说的话
 
-Edit:
+编辑：
 
 `plugins/yiji-focus-float/desktop/YijiDesktopFloat.m`
 
-Useful search targets:
+可以直接搜索这些句子：
 
-- `喵，离accept更进一步`
+- `喵，离accept更近一步`
 - `喵，努力给咪挣罐罐鸭！`
 - `喵，人好棒！`
 - `喵，退下吧人。`
 - `喵，人在干什么？`
 - `喵，不是说好要带咪发AER的吗？`
 
-Those control the start bubble, running encouragement, finish button, quit goodbye, idle reminder, and long-entertainment reminder.
+### 改图片和动作
 
-### Change the pet art or motions
-
-Pet art and motions live here:
+相关素材在这里：
 
 - `plugins/yiji-focus-float/prototype/assets/`
 - `plugins/yiji-focus-float/prototype/motions/idle/`
@@ -92,12 +88,12 @@ Pet art and motions live here:
 - `plugins/yiji-focus-float/prototype/motions/jumping/`
 - `plugins/yiji-focus-float/prototype/motions/waving/`
 
-Current behavior:
+现在的动作逻辑是：
 
-- `idle`: still pose
-- `running`: brief energetic motion when a task starts
-- `jumping`: happy motion when a task ends
-- `waving`: goodbye motion when quitting
+- `idle`：待机静止
+- `running`：开始任务时短暂精神一下
+- `jumping`：结束任务时开心一下
+- `waving`：退出前挥爪说明天见
 
 ## License
 

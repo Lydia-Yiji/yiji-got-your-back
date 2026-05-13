@@ -1,65 +1,66 @@
 # Yiji Focus Float
 
-Yiji Focus Float turns Yiji into a tiny local-first ADHD task companion for macOS.
+`Yiji Focus Float` 会把一姬变成一只常驻桌面的本地任务小宠物。
 
-The loop is intentionally lightweight:
+它的使用逻辑很轻：
 
-1. Double-click Yiji.
-2. Pick one preset category.
-3. Let the timer run quietly.
-4. Double-click again to wrap up.
-5. Watch `Done Today` and `Done This Week` grow into a visible record of effort.
+1. 双击一姬
+2. 选一个任务类别
+3. 让计时静静跑着
+4. 再双击一姬结束这一段
+5. 看 `Done Today` 和 `Done This Week` 把今天的努力长成可见的时间表
 
-## What works now
+## 现在已经实现的内容
 
-- Native macOS floating pet app
-- Drag-to-place Yiji overlay that stays above normal windows
-- Preset categories:
-  `开组会`, `seminar`, `读文献`, `洗数据`, `做模型`, `写论文`, `娱乐`, `饭饭`, `运动`, `家庭生活`
-- Double-click to start and stop a block
-- Single-click to open `Done Today` and `Done This Week`
-- Right-click menu with `Quit`
-- Automatic timestamps for each block
-- Closeout notes for outcome and feelings
-- Calendar-like review panel with color blocks
-- Quiet reminders only when no task is active and the machine appears idle
-- Extra reminder if `娱乐` runs past one hour
-- Local-only storage using `NSUserDefaults`
+- 原生 `macOS` 桌面浮窗宠物
+- 一姬可拖动摆放
+- 开始任务时弹任务选项
+- 任务类别目前包括：
+  `开组会`、`seminar`、`读文献`、`洗数据`、`做模型`、`写论文`、`娱乐`、`饭饭`、`运动`、`家庭生活`
+- 双击开始，双击结束
+- 单击查看 `Done Today` 和 `Done This Week`
+- 右键 `Quit`
+- 每段任务自动记录开始和结束时间
+- 收尾时可填写“这一段做成了什么”和“感觉如何”
+- `Done Today` / `Done This Week` 以彩色时间块复盘
+- 只有在没有活动任务、且明显久未动键鼠时才提醒
+- 如果 `娱乐` 超过一小时，会额外提醒
+- 数据只存在本机
 
-## Current pet copy
+## 现在的一姬文案
 
-- Start title: `喵，离accept更进一步`
-- Start encouragement: `喵，努力给咪挣罐罐鸭！`
-- Finish button: `喵，人好棒！`
-- Quit line: `喵，退下吧人。`
-- Idle reminder: `喵，人在干什么？`
-- Entertainment reminder: `喵，不是说好要带咪发AER的吗？`
+- 开始标题：`喵，离accept更近一步`
+- 开始后提示：`喵，努力给咪挣罐罐鸭！`
+- 结束按钮：`喵，人好棒！`
+- 退出提示：`喵，退下吧人。`
+- 久未活动提醒：`喵，人在干什么？`
+- 娱乐过久提醒：`喵，不是说好要带咪发AER的吗？`
 
-## Build the app
+## 如何构建 app
 
-From the repo root:
+在仓库根目录运行：
 
 ```bash
 ./plugins/yiji-focus-float/scripts/build-app.sh
 ```
 
-This builds:
+会生成：
 
 ```text
 plugins/yiji-focus-float/dist/Yiji Focus Float.app
 ```
 
-## Run for testing
+## 如何快速测试
 
-From the repo root:
+在仓库根目录运行：
 
 ```bash
 ./plugins/yiji-focus-float/scripts/run-desktop.sh
 ```
 
-## Share kit
+## 分享图素材
 
-Friend-facing guide images live here:
+给朋友看的说明图在这里：
 
 - `plugins/yiji-focus-float/share-kit/chapter-01-start.png`
 - `plugins/yiji-focus-float/share-kit/chapter-02-reminders.png`
@@ -67,56 +68,56 @@ Friend-facing guide images live here:
 - `plugins/yiji-focus-float/share-kit/chapter-04-today-week.png`
 - `plugins/yiji-focus-float/share-kit/yiji-guide-long.png`
 
-To regenerate them:
+如果要重生成：
 
 ```bash
 "/Users/jingyuanwang/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/bin/python3" ./plugins/yiji-focus-float/scripts/make_share_kit.py
 ```
 
-## Project structure
+## 目录结构
 
-- `desktop/`: native macOS app code
-- `prototype/`: earlier browser prototype and assets
-- `prototype/assets/`: pet art
-- `prototype/motions/`: motion frame folders
-- `scripts/build-app.sh`: build the `.app`
-- `scripts/run-desktop.sh`: build and launch for testing
-- `scripts/make_share_kit.py`: generate the four guide images and long poster
+- `desktop/`：原生 macOS app 代码
+- `prototype/`：更早的原型和资源
+- `prototype/assets/`：一姬静态图
+- `prototype/motions/`：动作帧
+- `scripts/build-app.sh`：构建 `.app`
+- `scripts/run-desktop.sh`：构建并直接启动
+- `scripts/make_share_kit.py`：生成四张说明图和长图
 
-## Customize it
+## 怎么自定义
 
-### Change the task list
+### 改任务清单
 
-Edit:
+编辑：
 
 - `plugins/yiji-focus-float/desktop/YijiDesktopFloat.m`
 
-Search for:
+搜索：
 
 - `self.categories = @[`
 
-If you also want the old browser prototype to match, update:
+如果也想让旧网页原型同步变化，再改：
 
 - `plugins/yiji-focus-float/prototype/app.js`
 
-### Change Yiji's lines
+### 改一姬的话
 
-Edit:
+编辑：
 
 - `plugins/yiji-focus-float/desktop/YijiDesktopFloat.m`
 
-Useful search targets:
+可以直接搜这些句子：
 
-- `喵，离accept更进一步`
+- `喵，离accept更近一步`
 - `喵，努力给咪挣罐罐鸭！`
 - `喵，人好棒！`
 - `喵，退下吧人。`
 - `喵，人在干什么？`
 - `喵，不是说好要带咪发AER的吗？`
 
-### Change the pet art or motion
+### 改图片和动作
 
-The desktop app currently uses:
+现在桌面版主要用这些资源：
 
 - `plugins/yiji-focus-float/prototype/assets/yiji-static-final.png`
 - `plugins/yiji-focus-float/prototype/motions/idle/`
@@ -124,16 +125,16 @@ The desktop app currently uses:
 - `plugins/yiji-focus-float/prototype/motions/jumping/`
 - `plugins/yiji-focus-float/prototype/motions/waving/`
 
-Current behavior:
+动作逻辑目前是：
 
-- `idle`: still pose
-- `running`: brief energetic motion when a task starts
-- `jumping`: happy motion when a task ends
-- `waving`: goodbye motion on quit
+- `idle`：待机静止
+- `running`：开始任务时短暂精神一下
+- `jumping`：结束任务时开心一下
+- `waving`：退出前挥爪说明天见
 
-## Platform note
+## 平台说明
 
-This desktop app is currently `macOS only`.
+现在这版只支持 `macOS`。
 
 ## License
 

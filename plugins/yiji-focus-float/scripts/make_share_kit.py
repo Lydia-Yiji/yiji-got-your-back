@@ -5,7 +5,7 @@ from PIL import Image, ImageDraw, ImageFont, ImageOps, ImageFilter
 
 ROOT = Path("/Users/jingyuanwang/Documents/New project/plugins/yiji-focus-float")
 SHARE_DIR = ROOT / "share-kit"
-ASSET = ROOT / "prototype/assets/yiji-static-final.png"
+ASSET = ROOT / "prototype/assets/yiji-share-redraw-strong.png"
 
 CARD_W = 1600
 CARD_H = 1200
@@ -68,6 +68,17 @@ def add_title(draw, chapter, title, subtitle):
 
 def load_pet(max_w=190, max_h=230):
     image = Image.open(ASSET).convert("RGBA")
+    matte = Image.new("RGBA", image.size, BG + (255,))
+    matte.alpha_composite(image)
+    bbox = image.getchannel("A").getbbox()
+    if bbox is not None:
+        pad = 2
+        x0 = max(0, bbox[0] - pad)
+        y0 = max(0, bbox[1] - pad)
+        x1 = min(image.width, bbox[2] + pad)
+        y1 = min(image.height, bbox[3] + pad)
+        matte = matte.crop((x0, y0, x1, y1))
+    image = matte
     image.thumbnail((max_w, max_h), Image.Resampling.NEAREST)
     return image
 
@@ -108,7 +119,7 @@ def chapter_start():
     panel = (OUTER_PAD, 365, CARD_W - OUTER_PAD - 260, CARD_H - 110)
     add_shadow(img, panel)
     bubble(draw, panel, panel[2] - 90)
-    draw.text((panel[0] + 34, panel[1] + 34), "喵，离accept更进一步", fill=INK, font=font(42, bold=True))
+    draw.text((panel[0] + 34, panel[1] + 34), "喵，离accept更近一步", fill=INK, font=font(42, bold=True))
     draw.text((panel[0] + 36, panel[1] + 92), "点一下就开始计时。", fill=SUB, font=font(28))
     tasks = ["开组会", "seminar", "读文献", "洗数据", "做模型", "写论文", "娱乐", "饭饭", "运动", "家庭生活"]
     fills = [

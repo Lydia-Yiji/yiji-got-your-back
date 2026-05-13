@@ -955,7 +955,7 @@ static const NSTimeInterval kActionAnimationFrameSeconds = 0.12;
 
 - (void)showStartBubble {
   self.bubbleMode = @"start";
-  self.bubbleTitle.stringValue = @"喵，离accept更进一步";
+  self.bubbleTitle.stringValue = @"喵，离accept更近一步";
   self.bubbleText.stringValue = @"点一下就开始计时。";
   self.overviewOptionsView.hidden = YES;
   self.startOptionsView.hidden = NO;

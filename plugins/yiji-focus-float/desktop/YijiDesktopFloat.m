@@ -2,6 +2,7 @@
 #import <CoreGraphics/CoreGraphics.h>
 
 static NSString * const kWindowOriginKey = @"YijiFloatWindowOrigin";
+static NSString * const kLastActivityKey = @"YijiFloatLastActivity";
 static NSString * const kCompletedEntriesKey = @"YijiFloatCompletedEntriesByDay";
 static const CGFloat kWindowWidth = 240.0;
 static const CGFloat kWindowHeight = 340.0;
@@ -13,6 +14,7 @@ static const NSTimeInterval kEntertainmentReminderSeconds = 60.0 * 60.0;
 static const NSTimeInterval kActionAnimationFrameSeconds = 0.12;
 
 @class YijiAppController;
+static CGEventRef YijiInputEventTapCallback(CGEventTapProxy proxy, CGEventType type, CGEventRef event, void *userInfo);
 
 @interface YijiAppController : NSObject
 - (void)handlePetSingleClick;
@@ -318,6 +320,10 @@ static const NSTimeInterval kActionAnimationFrameSeconds = 0.12;
 @property (nonatomic, assign) BOOL shouldQuitAfterAction;
 @property (nonatomic, assign) BOOL idleReminderShownForCurrentIdlePeriod;
 @property (nonatomic, copy) NSString *lastEntertainmentReminderTaskId;
+@property (nonatomic, strong) NSDate *lastObservedActivityAt;
+@property (nonatomic, strong) id globalActivityMonitor;
+@property (nonatomic, assign) CFMachPortRef inputEventTap;
+@property (nonatomic, assign) CFRunLoopSourceRef inputEventTapSource;
 @end
 
 @implementation YijiPetView
@@ -401,17 +407,20 @@ static const NSTimeInterval kActionAnimationFrameSeconds = 0.12;
 - (void)applicationDidFinishLaunching:(NSNotification *)notification {
   self.categories = @[ @"开组会", @"seminar", @"读文献", @"洗数据", @"做模型", @"写论文", @"娱乐", @"饭饭", @"运动", @"家庭生活" ];
   self.bubbleMode = @"hidden";
+  [self recordActivityNow];
   [self buildMenu];
   [self buildWindow];
   [self buildPet];
   [self buildBubble];
   [self buildReviewPanel];
+  [self installGlobalActivityMonitor];
   [self startHeartbeat];
   [NSApp activateIgnoringOtherApps:YES];
 }
 
 - (void)applicationWillTerminate:(NSNotification *)notification {
   [self.actionAnimationTimer invalidate];
+  [self uninstallActivityMonitors];
   [self persistWindowOrigin];
 }
 
@@ -1087,6 +1096,67 @@ static const NSTimeInterval kActionAnimationFrameSeconds = 0.12;
                                                         repeats:YES];
 }
 
+- (void)installGlobalActivityMonitor {
+  [self uninstallActivityMonitors];
+  NSEventMask mask = NSEventMaskMouseMoved |
+                     NSEventMaskLeftMouseDown |
+                     NSEventMaskRightMouseDown |
+                     NSEventMaskOtherMouseDown |
+                     NSEventMaskLeftMouseDragged |
+                     NSEventMaskRightMouseDragged |
+                     NSEventMaskOtherMouseDragged |
+                     NSEventMaskScrollWheel |
+                     NSEventMaskKeyDown |
+                     NSEventMaskFlagsChanged;
+  __weak typeof(self) weakSelf = self;
+  self.globalActivityMonitor = [NSEvent addGlobalMonitorForEventsMatchingMask:mask handler:^(NSEvent * _Nonnull event) {
+    [weakSelf recordActivityNow];
+  }];
+
+  CGEventMask eventMask =
+    CGEventMaskBit(kCGEventMouseMoved) |
+    CGEventMaskBit(kCGEventLeftMouseDown) |
+    CGEventMaskBit(kCGEventRightMouseDown) |
+    CGEventMaskBit(kCGEventOtherMouseDown) |
+    CGEventMaskBit(kCGEventLeftMouseDragged) |
+    CGEventMaskBit(kCGEventRightMouseDragged) |
+    CGEventMaskBit(kCGEventOtherMouseDragged) |
+    CGEventMaskBit(kCGEventScrollWheel) |
+    CGEventMaskBit(kCGEventKeyDown) |
+    CGEventMaskBit(kCGEventFlagsChanged);
+
+  self.inputEventTap = CGEventTapCreate(kCGSessionEventTap,
+                                        kCGHeadInsertEventTap,
+                                        kCGEventTapOptionListenOnly,
+                                        eventMask,
+                                        YijiInputEventTapCallback,
+                                        (__bridge void *)self);
+  if (self.inputEventTap != NULL) {
+    self.inputEventTapSource = CFMachPortCreateRunLoopSource(kCFAllocatorDefault, self.inputEventTap, 0);
+    if (self.inputEventTapSource != NULL) {
+      CFRunLoopAddSource(CFRunLoopGetMain(), self.inputEventTapSource, kCFRunLoopCommonModes);
+      CGEventTapEnable(self.inputEventTap, true);
+    }
+  }
+}
+
+- (void)uninstallActivityMonitors {
+  if (self.globalActivityMonitor != nil) {
+    [NSEvent removeMonitor:self.globalActivityMonitor];
+    self.globalActivityMonitor = nil;
+  }
+  if (self.inputEventTapSource != NULL) {
+    CFRunLoopRemoveSource(CFRunLoopGetMain(), self.inputEventTapSource, kCFRunLoopCommonModes);
+    CFRelease(self.inputEventTapSource);
+    self.inputEventTapSource = NULL;
+  }
+  if (self.inputEventTap != NULL) {
+    CFMachPortInvalidate(self.inputEventTap);
+    CFRelease(self.inputEventTap);
+    self.inputEventTap = NULL;
+  }
+}
+
 - (void)checkIdle {
   if (![self.bubbleMode isEqualToString:@"hidden"]) {
     return;
@@ -1106,13 +1176,22 @@ static const NSTimeInterval kActionAnimationFrameSeconds = 0.12;
     return;
   }
 
-  CFTimeInterval systemIdleSeconds = CGEventSourceSecondsSinceLastEventType(kCGEventSourceStateCombinedSessionState,
-                                                                            kCGAnyInputEventType);
-  if (systemIdleSeconds < 0) {
+  NSDate *lastActivity = self.lastObservedActivityAt;
+  if (lastActivity == nil) {
+    NSString *lastActivityString = [[NSUserDefaults standardUserDefaults] stringForKey:kLastActivityKey];
+    if (lastActivityString.length == 0) {
+      [self recordActivityNow];
+      return;
+    }
+    lastActivity = [NSDate dateWithTimeIntervalSince1970:lastActivityString.doubleValue];
+    self.lastObservedActivityAt = lastActivity;
+  }
+
+  if (lastActivity == nil) {
     return;
   }
 
-  if (systemIdleSeconds < kIdleReminderSeconds) {
+  if ([[NSDate date] timeIntervalSinceDate:lastActivity] < kIdleReminderSeconds) {
     self.idleReminderShownForCurrentIdlePeriod = NO;
     return;
   }
@@ -1125,6 +1204,9 @@ static const NSTimeInterval kActionAnimationFrameSeconds = 0.12;
 }
 
 - (void)recordActivityNow {
+  self.lastObservedActivityAt = [NSDate date];
+  NSString *timestamp = [NSString stringWithFormat:@"%f", [self.lastObservedActivityAt timeIntervalSince1970]];
+  [[NSUserDefaults standardUserDefaults] setObject:timestamp forKey:kLastActivityKey];
   self.idleReminderShownForCurrentIdlePeriod = NO;
 }
 
@@ -1148,6 +1230,24 @@ static const NSTimeInterval kActionAnimationFrameSeconds = 0.12;
 }
 
 @end
+
+static CGEventRef YijiInputEventTapCallback(CGEventTapProxy proxy, CGEventType type, CGEventRef event, void *userInfo) {
+  if (type == kCGEventTapDisabledByTimeout || type == kCGEventTapDisabledByUserInput) {
+    if (userInfo != NULL) {
+      YijiAppController *controller = (__bridge YijiAppController *)userInfo;
+      if (controller.inputEventTap != NULL) {
+        CGEventTapEnable(controller.inputEventTap, true);
+      }
+    }
+    return event;
+  }
+
+  if (userInfo != NULL) {
+    YijiAppController *controller = (__bridge YijiAppController *)userInfo;
+    [controller recordActivityNow];
+  }
+  return event;
+}
 
 int main(int argc, const char * argv[]) {
   @autoreleasepool {

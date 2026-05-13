@@ -2,7 +2,6 @@
 #import <CoreGraphics/CoreGraphics.h>
 
 static NSString * const kWindowOriginKey = @"YijiFloatWindowOrigin";
-static NSString * const kLastActivityKey = @"YijiFloatLastActivity";
 static NSString * const kCompletedEntriesKey = @"YijiFloatCompletedEntriesByDay";
 static const CGFloat kWindowWidth = 240.0;
 static const CGFloat kWindowHeight = 340.0;
@@ -317,6 +316,7 @@ static const NSTimeInterval kActionAnimationFrameSeconds = 0.12;
 @property (nonatomic, strong) YijiTimelineView *timelineView;
 @property (nonatomic, strong) NSTextField *reviewSummaryLabel;
 @property (nonatomic, assign) BOOL shouldQuitAfterAction;
+@property (nonatomic, assign) BOOL idleReminderShownForCurrentIdlePeriod;
 @property (nonatomic, copy) NSString *lastEntertainmentReminderTaskId;
 @end
 
@@ -1106,21 +1106,26 @@ static const NSTimeInterval kActionAnimationFrameSeconds = 0.12;
     return;
   }
 
-  NSString *lastActivityString = [[NSUserDefaults standardUserDefaults] stringForKey:kLastActivityKey];
-  if (lastActivityString.length == 0) {
+  CFTimeInterval systemIdleSeconds = CGEventSourceSecondsSinceLastEventType(kCGEventSourceStateCombinedSessionState,
+                                                                            kCGAnyInputEventType);
+  if (systemIdleSeconds < 0) {
     return;
   }
 
-  NSDate *lastActivity = [NSDate dateWithTimeIntervalSince1970:lastActivityString.doubleValue];
-  if ([[NSDate date] timeIntervalSinceDate:lastActivity] >= kIdleReminderSeconds) {
+  if (systemIdleSeconds < kIdleReminderSeconds) {
+    self.idleReminderShownForCurrentIdlePeriod = NO;
+    return;
+  }
+
+  if (!self.idleReminderShownForCurrentIdlePeriod) {
+    self.idleReminderShownForCurrentIdlePeriod = YES;
     [self showReminderBubbleWithTitle:@"喵，人在干什么？"
                               message:@"已经 20 分钟没有键盘或鼠标动静啦。双击一姬，我就当你回来继续上班班了。"];
   }
 }
 
 - (void)recordActivityNow {
-  NSString *timestamp = [NSString stringWithFormat:@"%f", [[NSDate date] timeIntervalSince1970]];
-  [[NSUserDefaults standardUserDefaults] setObject:timestamp forKey:kLastActivityKey];
+  self.idleReminderShownForCurrentIdlePeriod = NO;
 }
 
 - (NSPoint)loadWindowOrigin {

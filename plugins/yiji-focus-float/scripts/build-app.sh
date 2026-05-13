@@ -26,7 +26,9 @@ cp -R "$ROOT/prototype/motions/waving" "$RESOURCES_DIR/waving-frames"
 
 export CLANG_MODULE_CACHE_PATH="$MODULE_CACHE"
 
-/usr/bin/clang \
+xcrun clang \
+  -arch arm64 \
+  -arch x86_64 \
   -fmodules \
   -fobjc-arc \
   -framework Cocoa \

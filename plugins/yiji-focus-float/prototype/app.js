@@ -1,6 +1,7 @@
 const STORAGE_KEY = "yiji-focus-float.v2";
 const INACTIVITY_MS = 30 * 60 * 1000;
 const HEARTBEAT_MS = 30 * 1000;
+const DESKTOP_MODE = new URLSearchParams(window.location.search).get("desktop") === "1" || window.__yijiDesktop === true;
 
 const CATEGORIES = [
   { key: "reading", label: "读文献", accent: "moss" },
@@ -38,6 +39,10 @@ const state = loadState();
 let pendingReminder = null;
 let lastActivityStamp = state.lastActivityAt ? new Date(state.lastActivityAt).getTime() : 0;
 let activityWriteStamp = lastActivityStamp;
+let desktopBubbleMode = "hidden";
+let dragPointerId = null;
+let dragStartPoint = null;
+let dragTriggered = false;
 
 const petToggle = document.getElementById("pet-toggle");
 const activeState = document.getElementById("active-state");
@@ -62,14 +67,28 @@ const cancelStart = document.getElementById("cancel-start");
 const reminderCard = document.getElementById("reminder-card");
 const reminderTitle = document.getElementById("reminder-title");
 const reminderBody = document.getElementById("reminder-body");
+const desktopBubble = document.getElementById("desktop-bubble");
+const desktopBubbleTitle = document.getElementById("desktop-bubble-title");
+const desktopBubbleText = document.getElementById("desktop-bubble-text");
+const desktopBubbleOptions = document.getElementById("desktop-bubble-options");
+const desktopStopForm = document.getElementById("desktop-stop-form");
+const desktopTaskOutcome = document.getElementById("desktop-task-outcome");
+const desktopTaskFeeling = document.getElementById("desktop-task-feeling");
+const desktopStopCancel = document.getElementById("desktop-stop-cancel");
 
 petToggle.addEventListener("dblclick", onPetDoubleClick);
+petToggle.addEventListener("pointerup", onPetPointerUp);
 cancelStop.addEventListener("click", () => stopDialog.close("cancel"));
 stopForm.addEventListener("submit", onStopSubmit);
 exportButton.addEventListener("click", exportToday);
 resetButton.addEventListener("click", resetToday);
 cancelStart.addEventListener("click", () => startDialog.close("cancel"));
 startOptions.addEventListener("click", onStartOptionClick);
+petToggle.addEventListener("pointerdown", onPetPointerDown);
+window.addEventListener("pointermove", onDesktopPointerMove, { passive: true });
+desktopBubbleOptions?.addEventListener("click", onStartOptionClick);
+desktopStopForm?.addEventListener("submit", onDesktopStopSubmit);
+desktopStopCancel?.addEventListener("click", closeDesktopBubble);
 
 [
   "pointerdown",
@@ -85,6 +104,7 @@ startOptions.addEventListener("click", onStartOptionClick);
 setInterval(tick, HEARTBEAT_MS);
 render();
 tick();
+installNativeHooks();
 
 function loadState() {
   const fallback = {
@@ -129,7 +149,29 @@ function getTodayEntries() {
 }
 
 function onPetDoubleClick() {
+  if (dragTriggered) {
+    dragTriggered = false;
+    return;
+  }
+
   trackActivity(true);
+
+  if (DESKTOP_MODE) {
+    if (pendingReminder) {
+      pendingReminder = null;
+      closeDesktopBubble();
+      render();
+      return;
+    }
+
+    if (state.activeTask) {
+      openDesktopStopBubble();
+      return;
+    }
+
+    openDesktopStartBubble();
+    return;
+  }
 
   if (pendingReminder) {
     pendingReminder = null;
@@ -170,11 +212,20 @@ function onStartOptionClick(event) {
   activityWriteStamp = lastActivityStamp;
 
   saveState();
-  startDialog.close("selected");
+  if (DESKTOP_MODE) {
+    closeDesktopBubble();
+  } else {
+    startDialog.close("selected");
+  }
   render();
 }
 
 function openStopDialog() {
+  if (DESKTOP_MODE) {
+    openDesktopStopBubble();
+    return;
+  }
+
   const task = state.activeTask;
   if (!task) {
     return;
@@ -187,8 +238,20 @@ function openStopDialog() {
 
 function onStopSubmit(event) {
   event.preventDefault();
+  finishActiveTask(outcomeInput.value.trim(), feelingInput.value.trim());
+  stopDialog.close("saved");
+  render();
+}
+
+function onDesktopStopSubmit(event) {
+  event.preventDefault();
+  finishActiveTask(desktopTaskOutcome.value.trim(), desktopTaskFeeling.value.trim());
+  closeDesktopBubble();
+  render();
+}
+
+function finishActiveTask(outcome, feeling) {
   if (!state.activeTask) {
-    stopDialog.close();
     return;
   }
 
@@ -197,8 +260,8 @@ function onStopSubmit(event) {
   const entry = {
     ...active,
     endTime: nowIso,
-    outcome: outcomeInput.value.trim(),
-    feeling: feelingInput.value.trim()
+    outcome,
+    feeling
   };
 
   getTodayEntries().push(entry);
@@ -207,8 +270,6 @@ function onStopSubmit(event) {
   lastActivityStamp = new Date(nowIso).getTime();
   activityWriteStamp = lastActivityStamp;
   saveState();
-  stopDialog.close("saved");
-  render();
 }
 
 function resetToday() {
@@ -244,6 +305,19 @@ function tick() {
   render();
 }
 
+function installNativeHooks() {
+  if (!DESKTOP_MODE) {
+    return;
+  }
+
+  window.__yijiNativeIdle = (payload) => {
+    if (!payload || !payload.lastActiveAt) {
+      return;
+    }
+    syncLastActivity(payload.lastActiveAt);
+  };
+}
+
 function onUserActivity(event) {
   if (event.type === "visibilitychange" && document.visibilityState === "hidden") {
     return;
@@ -257,6 +331,10 @@ function onUserActivity(event) {
 }
 
 function trackActivity(forceWrite) {
+  if (DESKTOP_MODE && !forceWrite) {
+    return;
+  }
+
   if (document.visibilityState === "hidden") {
     return;
   }
@@ -271,6 +349,76 @@ function trackActivity(forceWrite) {
   activityWriteStamp = now;
   state.lastActivityAt = new Date(now).toISOString();
   saveState();
+}
+
+function syncLastActivity(isoString) {
+  const timestamp = new Date(isoString).getTime();
+  if (!Number.isFinite(timestamp)) {
+    return;
+  }
+
+  if (timestamp <= lastActivityStamp) {
+    return;
+  }
+
+  lastActivityStamp = timestamp;
+  activityWriteStamp = timestamp;
+  state.lastActivityAt = isoString;
+  saveState();
+}
+
+function startDesktopDrag() {
+  if (!DESKTOP_MODE) {
+    return;
+  }
+
+  if (window.webkit?.messageHandlers?.yijiNative) {
+    window.webkit.messageHandlers.yijiNative.postMessage({ type: "startDrag" });
+  }
+}
+
+function onPetPointerDown(event) {
+  if (!DESKTOP_MODE) {
+    return;
+  }
+
+  dragPointerId = event.pointerId;
+  dragStartPoint = { x: event.clientX, y: event.clientY };
+  dragTriggered = false;
+}
+
+function onPetPointerUp(event) {
+  if (!DESKTOP_MODE) {
+    return;
+  }
+
+  if (dragPointerId === event.pointerId) {
+    dragPointerId = null;
+    dragStartPoint = null;
+    setTimeout(() => {
+      dragTriggered = false;
+    }, 50);
+  }
+}
+
+function onDesktopPointerMove(event) {
+  if (!DESKTOP_MODE || dragPointerId == null || dragStartPoint == null) {
+    return;
+  }
+
+  if ((event.buttons & 1) !== 1) {
+    dragPointerId = null;
+    dragStartPoint = null;
+    dragTriggered = false;
+    return;
+  }
+
+  const dx = event.clientX - dragStartPoint.x;
+  const dy = event.clientY - dragStartPoint.y;
+  if (!dragTriggered && Math.hypot(dx, dy) > 6) {
+    dragTriggered = true;
+    startDesktopDrag();
+  }
 }
 
 function maybeRaiseReminders() {
@@ -301,6 +449,7 @@ function maybeRaiseReminders() {
 
 function render() {
   renderReminder();
+  renderDesktopBubble();
   renderActiveTask();
   renderSummary();
   renderTimeline();
@@ -309,6 +458,10 @@ function render() {
 }
 
 function renderReminder() {
+  if (DESKTOP_MODE) {
+    return;
+  }
+
   if (!pendingReminder) {
     reminderCard.hidden = true;
     reminderCard.className = "reminder-card";
@@ -321,6 +474,83 @@ function renderReminder() {
   reminderCard.className = "reminder-card visible";
   reminderTitle.textContent = pendingReminder.title;
   reminderBody.textContent = pendingReminder.body;
+}
+
+function renderDesktopBubble() {
+  if (!DESKTOP_MODE || !desktopBubble) {
+    return;
+  }
+
+  if (pendingReminder) {
+    desktopBubble.hidden = false;
+    desktopBubble.style.display = "block";
+    desktopBubbleMode = "reminder";
+    desktopBubble.dataset.mode = "reminder";
+    desktopBubbleTitle.textContent = pendingReminder.title;
+    desktopBubbleText.textContent = pendingReminder.body;
+    desktopBubbleOptions.hidden = true;
+    desktopBubbleOptions.style.display = "none";
+    desktopStopForm.hidden = true;
+    desktopStopForm.style.display = "none";
+    return;
+  }
+
+  if (desktopBubbleMode === "start") {
+    desktopBubble.hidden = false;
+    desktopBubble.style.display = "block";
+    desktopBubble.dataset.mode = "start";
+    desktopBubbleTitle.textContent = "今天这段做什么";
+    desktopBubbleText.textContent = "点一下就开始计时。";
+    desktopBubbleOptions.hidden = false;
+    desktopBubbleOptions.style.display = "grid";
+    desktopStopForm.hidden = true;
+    desktopStopForm.style.display = "none";
+    return;
+  }
+
+  if (desktopBubbleMode === "stop" && state.activeTask) {
+    desktopBubble.hidden = false;
+    desktopBubble.style.display = "block";
+    desktopBubble.dataset.mode = "stop";
+    desktopBubbleTitle.textContent = `${state.activeTask.label} 结束啦`;
+    desktopBubbleText.textContent = "补一句成果就收工。";
+    desktopBubbleOptions.hidden = true;
+    desktopBubbleOptions.style.display = "none";
+    desktopStopForm.hidden = false;
+    desktopStopForm.style.display = "grid";
+    return;
+  }
+
+  desktopBubble.hidden = true;
+  desktopBubble.style.display = "none";
+  desktopBubble.dataset.mode = "hidden";
+  desktopBubbleTitle.textContent = "";
+  desktopBubbleText.textContent = "";
+  desktopBubbleOptions.hidden = true;
+  desktopBubbleOptions.style.display = "none";
+  desktopStopForm.hidden = true;
+  desktopStopForm.style.display = "none";
+}
+
+function openDesktopStartBubble() {
+  desktopBubbleMode = "start";
+  renderDesktopBubble();
+}
+
+function openDesktopStopBubble() {
+  desktopBubbleMode = "stop";
+  if (desktopTaskOutcome) {
+    desktopTaskOutcome.value = "";
+  }
+  if (desktopTaskFeeling) {
+    desktopTaskFeeling.value = "";
+  }
+  renderDesktopBubble();
+}
+
+function closeDesktopBubble() {
+  desktopBubbleMode = "hidden";
+  renderDesktopBubble();
 }
 
 function renderActiveTask() {

@@ -1,0 +1,6 @@
+.DS_Store
+desktop/build/
+dist/
+prototype/assets/yiji-static.png
+prototype/assets/yiji-static-clean.png
+prototype/assets/yiji-static-cropped.png

@@ -141,6 +141,10 @@ label span,
   font-weight: 700;
 }
 
+.desktop-bubble {
+  display: none;
+}
+
 .reminder-card,
 .active-panel,
 .timeline-panel,
@@ -360,6 +364,202 @@ label span,
 
 .weekly-empty {
   color: var(--muted);
+}
+
+html.desktop-shell,
+html.desktop-shell body {
+  background: transparent;
+}
+
+html.desktop-shell .app-shell {
+  min-height: auto;
+  padding: 0;
+}
+
+html.desktop-shell .float-card {
+  width: 236px;
+  margin: 0;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  padding: 0;
+  box-shadow: none;
+  backdrop-filter: none;
+}
+
+html.desktop-shell .hero {
+  position: relative;
+  width: 236px;
+  height: 320px;
+  display: block;
+}
+
+html.desktop-shell .hero-copy,
+html.desktop-shell .active-panel,
+html.desktop-shell .summary-grid,
+html.desktop-shell .encouragement-panel,
+html.desktop-shell .timeline-panel,
+html.desktop-shell .weekly-panel,
+html.desktop-shell .reminder-card {
+  display: none;
+}
+
+html.desktop-shell .pet-button {
+  position: absolute;
+  right: 8px;
+  bottom: 0;
+  min-height: 88px;
+  width: 88px;
+  height: 88px;
+  padding: 0;
+  gap: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  border: 0 !important;
+  appearance: none;
+  -webkit-appearance: none;
+  outline: none;
+}
+
+html.desktop-shell .pet-face {
+  width: 88px;
+  height: 88px;
+  min-width: 88px;
+  min-height: 88px;
+  padding: 0;
+  border-radius: 0;
+  background: transparent !important;
+  box-shadow: none;
+}
+
+html.desktop-shell .pet-art {
+  object-fit: contain;
+  filter: drop-shadow(0 12px 20px rgba(28, 53, 43, 0.28));
+  background: transparent !important;
+}
+
+html.desktop-shell .pet-label,
+html.desktop-shell .pet-note {
+  display: none;
+}
+
+html.desktop-shell .pet-button:hover,
+html.desktop-shell .pet-button:active {
+  transform: none;
+}
+
+html.desktop-shell .pet-button {
+  transition: none;
+}
+
+html.desktop-shell .desktop-bubble {
+  display: block;
+  position: absolute;
+  right: 0;
+  bottom: 98px;
+  width: 220px;
+  padding-bottom: 12px;
+  z-index: 20;
+}
+
+html.desktop-shell .desktop-bubble[hidden] {
+  display: none !important;
+}
+
+html.desktop-shell .desktop-bubble-body {
+  position: relative;
+  border-radius: 18px;
+  background: #fffaf1;
+  border: 1px solid rgba(226, 212, 188, 0.95);
+  box-shadow: 0 14px 36px rgba(34, 31, 26, 0.18);
+  padding: 10px;
+}
+
+html.desktop-shell .desktop-bubble-body::after {
+  content: "";
+  position: absolute;
+  right: 24px;
+  bottom: -10px;
+  width: 18px;
+  height: 18px;
+  background: #fffaf1;
+  border-right: 1px solid rgba(226, 212, 188, 0.95);
+  border-bottom: 1px solid rgba(226, 212, 188, 0.95);
+  transform: rotate(45deg);
+}
+
+html.desktop-shell .desktop-bubble-title {
+  margin: 0 0 4px;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+html.desktop-shell .desktop-bubble-text {
+  margin: 0 0 8px;
+  font-size: 11px;
+  line-height: 1.35;
+  color: var(--muted);
+}
+
+html.desktop-shell .desktop-bubble-options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+
+html.desktop-shell .desktop-bubble-options[hidden] {
+  display: none !important;
+}
+
+html.desktop-shell .bubble-option,
+html.desktop-shell .bubble-primary,
+html.desktop-shell .bubble-ghost {
+  border: 0;
+  border-radius: 12px;
+  padding: 8px 6px;
+  font: inherit;
+  font-size: 12px;
+  line-height: 1.1;
+  color: var(--ink);
+  cursor: pointer;
+}
+
+html.desktop-shell .bubble-primary {
+  background: #2f7057;
+  color: #fff;
+}
+
+html.desktop-shell .bubble-ghost {
+  background: #efe8da;
+}
+
+html.desktop-shell .desktop-stop-form {
+  display: grid;
+  gap: 6px;
+  padding-bottom: 10px;
+}
+
+html.desktop-shell .desktop-stop-form[hidden] {
+  display: none !important;
+}
+
+html.desktop-shell .desktop-stop-form textarea,
+html.desktop-shell .desktop-stop-form input {
+  width: 100%;
+  border: 1px solid #d9cfba;
+  border-radius: 12px;
+  padding: 7px 9px;
+  font-size: 12px;
+  background: #fffdf7;
+  color: var(--ink);
+}
+
+html.desktop-shell .desktop-stop-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
 }
 
 .start-options {

@@ -4,6 +4,11 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Yiji Focus Float</title>
+    <script>
+      if (new URLSearchParams(window.location.search).get("desktop") === "1") {
+        document.documentElement.classList.add("desktop-shell");
+      }
+    </script>
     <link rel="stylesheet" href="./styles.css" />
   </head>
   <body>
@@ -26,11 +31,46 @@
 
           <button id="pet-toggle" class="pet-button" type="button" aria-live="polite">
             <span class="pet-face">
-              <img class="pet-art" src="./assets/yiji-idle.gif" alt="一姬待机动画" />
+              <img class="pet-art" src="./assets/yiji-static-final.png" alt="一姬静态形象" />
             </span>
-            <span class="pet-label">双击我开始 / 结束</span>
-            <span class="pet-note">提醒也要双击我才会消失</span>
+            <span class="pet-label">一姬</span>
+            <span class="pet-note">双击开始 / 结束</span>
           </button>
+
+          <section id="desktop-bubble" class="desktop-bubble" hidden>
+            <div class="desktop-bubble-body">
+              <p id="desktop-bubble-title" class="desktop-bubble-title"></p>
+              <p id="desktop-bubble-text" class="desktop-bubble-text"></p>
+              <div id="desktop-bubble-options" class="desktop-bubble-options">
+                <button type="button" class="bubble-option moss" data-category="reading">读文献</button>
+                <button type="button" class="bubble-option blue" data-category="cleaning">洗数据</button>
+                <button type="button" class="bubble-option berry" data-category="modeling">做模型</button>
+                <button type="button" class="bubble-option gold" data-category="writing">写论文</button>
+                <button type="button" class="bubble-option pink" data-category="fun">娱乐</button>
+                <button type="button" class="bubble-option orange" data-category="food">饭饭</button>
+                <button type="button" class="bubble-option green" data-category="exercise">运动</button>
+                <button type="button" class="bubble-option lavender" data-category="family">家庭生活</button>
+              </div>
+              <form id="desktop-stop-form" class="desktop-stop-form">
+                <textarea
+                  id="desktop-task-outcome"
+                  rows="2"
+                  maxlength="120"
+                  placeholder="这一段做成了什么"
+                ></textarea>
+                <input
+                  id="desktop-task-feeling"
+                  type="text"
+                  maxlength="60"
+                  placeholder="感觉如何"
+                />
+                <div class="desktop-stop-actions">
+                  <button type="button" id="desktop-stop-cancel" class="bubble-ghost">继续</button>
+                  <button type="submit" class="bubble-primary">喵，人好棒！</button>
+                </div>
+              </form>
+            </div>
+          </section>
         </div>
 
         <section class="active-panel">

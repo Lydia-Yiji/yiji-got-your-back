@@ -9,6 +9,8 @@ static const CGFloat kWindowHeight = 340.0;
 static const CGFloat kPetMaxHeight = 88.0;
 static const CGFloat kBubbleWidth = 220.0;
 static const CGFloat kBubbleBottom = 78.0;
+static const CGFloat kMinimumVisibleWidth = 72.0;
+static const CGFloat kMinimumVisibleHeight = 96.0;
 static const NSTimeInterval kIdleReminderSeconds = 20.0 * 60.0;
 static const NSTimeInterval kEntertainmentReminderSeconds = 60.0 * 60.0;
 static const NSTimeInterval kActionAnimationFrameSeconds = 0.12;
@@ -23,6 +25,7 @@ static CGEventRef YijiInputEventTapCallback(CGEventTapProxy proxy, CGEventType t
 - (void)showPetContextMenuForEvent:(NSEvent *)event inView:(NSView *)view;
 - (void)hideBubble;
 - (void)persistWindowOrigin;
+- (NSPoint)clampedWindowOriginForOrigin:(NSPoint)origin;
 @end
 
 @interface YijiWindow : NSWindow
@@ -382,7 +385,9 @@ static CGEventRef YijiInputEventTapCallback(CGEventTapProxy proxy, CGEventType t
     [self.controller hideBubble];
   }
   if (self.dragging) {
-    [self.window setFrameOrigin:NSMakePoint(self.window.frame.origin.x + dx, self.window.frame.origin.y + dy)];
+    NSPoint proposedOrigin = NSMakePoint(self.window.frame.origin.x + dx, self.window.frame.origin.y + dy);
+    NSPoint clampedOrigin = [self.controller clampedWindowOriginForOrigin:proposedOrigin];
+    [self.window setFrameOrigin:clampedOrigin];
     self.dragStartPoint = current;
   }
 }
@@ -466,6 +471,33 @@ static CGEventRef YijiInputEventTapCallback(CGEventTapProxy proxy, CGEventType t
   self.window.contentView = self.rootView;
   [self.window orderFrontRegardless];
   [self.window makeKeyAndOrderFront:nil];
+}
+
+- (NSScreen *)bestScreenForOrigin:(NSPoint)origin {
+  NSRect windowRect = NSMakeRect(origin.x, origin.y, kWindowWidth, kWindowHeight);
+  NSScreen *bestScreen = NSScreen.mainScreen ?: NSScreen.screens.firstObject;
+  CGFloat bestIntersectionArea = -1.0;
+  for (NSScreen *screen in NSScreen.screens) {
+    NSRect intersection = NSIntersectionRect(screen.visibleFrame, windowRect);
+    CGFloat area = MAX(0.0, intersection.size.width) * MAX(0.0, intersection.size.height);
+    if (area > bestIntersectionArea) {
+      bestIntersectionArea = area;
+      bestScreen = screen;
+    }
+  }
+  return bestScreen;
+}
+
+- (NSPoint)clampedWindowOriginForOrigin:(NSPoint)origin {
+  NSScreen *screen = [self bestScreenForOrigin:origin];
+  NSRect visibleFrame = screen != nil ? screen.visibleFrame : NSMakeRect(0, 0, 1440, 900);
+  CGFloat minX = NSMinX(visibleFrame) - kWindowWidth + kMinimumVisibleWidth;
+  CGFloat maxX = NSMaxX(visibleFrame) - kMinimumVisibleWidth;
+  CGFloat minY = NSMinY(visibleFrame);
+  CGFloat maxY = NSMaxY(visibleFrame) - kMinimumVisibleHeight;
+  CGFloat clampedX = MIN(MAX(origin.x, minX), maxX);
+  CGFloat clampedY = MIN(MAX(origin.y, minY), maxY);
+  return NSMakePoint(clampedX, clampedY);
 }
 
 - (void)buildPet {
@@ -1215,16 +1247,17 @@ static CGEventRef YijiInputEventTapCallback(CGEventTapProxy proxy, CGEventType t
   if (saved.length > 0) {
     NSArray<NSString *> *parts = [saved componentsSeparatedByString:@","];
     if (parts.count == 2) {
-      return NSMakePoint(parts[0].doubleValue, parts[1].doubleValue);
+      return [self clampedWindowOriginForOrigin:NSMakePoint(parts[0].doubleValue, parts[1].doubleValue)];
     }
   }
   NSScreen *screen = NSScreen.mainScreen;
   NSRect visibleFrame = screen != nil ? screen.visibleFrame : NSMakeRect(0, 0, 1440, 900);
-  return NSMakePoint(NSMaxX(visibleFrame) - kWindowWidth - 18.0, NSMinY(visibleFrame) + 18.0);
+  return [self clampedWindowOriginForOrigin:NSMakePoint(NSMaxX(visibleFrame) - kWindowWidth - 18.0,
+                                                         NSMinY(visibleFrame) + 18.0)];
 }
 
 - (void)persistWindowOrigin {
-  NSPoint origin = self.window.frame.origin;
+  NSPoint origin = [self clampedWindowOriginForOrigin:self.window.frame.origin];
   NSString *value = [NSString stringWithFormat:@"%f,%f", origin.x, origin.y];
   [[NSUserDefaults standardUserDefaults] setObject:value forKey:kWindowOriginKey];
 }

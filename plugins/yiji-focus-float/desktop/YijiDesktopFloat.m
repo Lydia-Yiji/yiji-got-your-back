@@ -313,7 +313,6 @@ static CGEventRef YijiInputEventTapCallback(CGEventTapProxy proxy, CGEventType t
 @property (nonatomic, strong) NSTextView *feelingField;
 @property (nonatomic, strong) NSButton *continueButton;
 @property (nonatomic, strong) NSButton *finishButton;
-@property (nonatomic, strong) NSTimer *heartbeatTimer;
 @property (nonatomic, strong) NSTimer *actionAnimationTimer;
 @property (nonatomic, copy) NSString *activeTaskLabel;
 @property (nonatomic, copy) NSString *bubbleMode;
@@ -336,6 +335,7 @@ static CGEventRef YijiInputEventTapCallback(CGEventTapProxy proxy, CGEventType t
 @property (nonatomic, strong) id globalActivityMonitor;
 @property (nonatomic, assign) CFMachPortRef inputEventTap;
 @property (nonatomic, assign) CFRunLoopSourceRef inputEventTapSource;
+@property (nonatomic, strong) NSTimer *heartbeatTimer;
 @end
 
 @implementation YijiPetView
@@ -434,6 +434,8 @@ static CGEventRef YijiInputEventTapCallback(CGEventTapProxy proxy, CGEventType t
 
 - (void)applicationWillTerminate:(NSNotification *)notification {
   [self.actionAnimationTimer invalidate];
+  [self.heartbeatTimer invalidate];
+  self.heartbeatTimer = nil;
   [self uninstallActivityMonitors];
   [self persistWindowOrigin];
 }
@@ -1163,11 +1165,13 @@ static CGEventRef YijiInputEventTapCallback(CGEventTapProxy proxy, CGEventType t
 }
 
 - (void)startHeartbeat {
-  self.heartbeatTimer = [NSTimer scheduledTimerWithTimeInterval:15.0
-                                                         target:self
-                                                       selector:@selector(checkIdle)
-                                                       userInfo:nil
-                                                        repeats:YES];
+  [self.heartbeatTimer invalidate];
+  self.heartbeatTimer = [NSTimer timerWithTimeInterval:15.0
+                                                target:self
+                                              selector:@selector(checkIdle)
+                                              userInfo:nil
+                                               repeats:YES];
+  [[NSRunLoop mainRunLoop] addTimer:self.heartbeatTimer forMode:NSRunLoopCommonModes];
 }
 
 - (void)installGlobalActivityMonitor {

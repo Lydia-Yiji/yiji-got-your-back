@@ -74,6 +74,21 @@ plugins/yiji-focus-float/dist/Yiji Focus Float.app
 ./plugins/yiji-focus-float/scripts/run-desktop.sh
 ```
 
+## 分享图素材
+
+给朋友看的说明图在这里：
+
+- `plugins/yiji-focus-float/share-kit/chapter-01-start.png`
+- `plugins/yiji-focus-float/share-kit/chapter-02-reminders.png`
+- `plugins/yiji-focus-float/share-kit/chapter-03-wrapup-and-today.png`
+- `plugins/yiji-focus-float/share-kit/chapter-04-today-week.png`
+- `plugins/yiji-focus-float/share-kit/yiji-guide-long-v2.png`
+
+如果要重生成：
+
+```bash
+"/Users/jingyuanwang/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/bin/python3" ./plugins/yiji-focus-float/scripts/make_share_kit.py
+```
 
 ## 目录结构
 

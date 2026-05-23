@@ -203,14 +203,26 @@ static CGEventRef YijiInputEventTapCallback(CGEventTapProxy proxy, CGEventType t
       NSFontAttributeName: [NSFont systemFontOfSize:11 weight:NSFontWeightSemibold],
       NSForegroundColorAttributeName: [NSColor colorWithCalibratedRed:0.16 green:0.18 blue:0.17 alpha:1.0]
     };
+    NSDictionary *outcomeAttrs = @{
+      NSFontAttributeName: [NSFont systemFontOfSize:10 weight:NSFontWeightRegular],
+      NSForegroundColorAttributeName: [NSColor colorWithCalibratedRed:0.24 green:0.28 blue:0.26 alpha:1.0]
+    };
     NSDictionary *timeAttrs = @{
       NSFontAttributeName: [NSFont systemFontOfSize:9 weight:NSFontWeightMedium],
       NSForegroundColorAttributeName: [NSColor colorWithCalibratedRed:0.26 green:0.30 blue:0.28 alpha:1.0]
     };
     NSString *title = entry[@"label"] ?: @"";
+    NSString *outcomeText = [entry[@"outcome"] length] > 0 ? entry[@"outcome"] : @"";
     NSString *timeText = [NSString stringWithFormat:@"%@-%@", [self shortTimeString:visibleStart], [self shortTimeString:visibleEnd]];
     [title drawInRect:NSMakeRect(blockRect.origin.x + 7, blockRect.origin.y + blockRect.size.height - 18, blockRect.size.width - 14, 14) withAttributes:titleAttrs];
+    if (outcomeText.length > 0) {
+      [outcomeText drawInRect:NSMakeRect(blockRect.origin.x + 7, blockRect.origin.y + 21, blockRect.size.width - 14, MAX(12.0, blockRect.size.height - 38)) withAttributes:outcomeAttrs];
+    }
     [timeText drawInRect:NSMakeRect(blockRect.origin.x + 7, blockRect.origin.y + 7, blockRect.size.width - 14, 12) withAttributes:timeAttrs];
+    if ([entry[@"feeling"] isEqualToString:@"happy"]) {
+      [@"💗" drawAtPoint:NSMakePoint(blockRect.origin.x + blockRect.size.width - 24, blockRect.origin.y + blockRect.size.height - 20)
+         withAttributes:@{ NSFontAttributeName: [NSFont systemFontOfSize:12] }];
+    }
     nextAvailableY = NSMaxY(blockRect) + 4.0;
   }
 }
@@ -310,7 +322,7 @@ static CGEventRef YijiInputEventTapCallback(CGEventTapProxy proxy, CGEventType t
 @property (nonatomic, strong) NSView *startOptionsView;
 @property (nonatomic, strong) NSView *stopFormView;
 @property (nonatomic, strong) NSTextView *outcomeField;
-@property (nonatomic, strong) NSTextView *feelingField;
+@property (nonatomic, strong) NSPopUpButton *feelingField;
 @property (nonatomic, strong) NSButton *continueButton;
 @property (nonatomic, strong) NSButton *finishButton;
 @property (nonatomic, strong) NSTimer *actionAnimationTimer;
@@ -633,10 +645,11 @@ static CGEventRef YijiInputEventTapCallback(CGEventTapProxy proxy, CGEventType t
   feelingLabel.textColor = [NSColor colorWithCalibratedRed:0.46 green:0.48 blue:0.43 alpha:1.0];
   [self.stopFormView addSubview:feelingLabel];
 
-  NSTextView *feelingTextView = nil;
-  NSScrollView *feelingScrollView = [self textInputWithFrame:NSMakeRect(0, 28, 188, 44) textView:&feelingTextView];
-  self.feelingField = feelingTextView;
-  [self.stopFormView addSubview:feelingScrollView];
+  self.feelingField = [[NSPopUpButton alloc] initWithFrame:NSMakeRect(0, 38, 188, 28) pullsDown:NO];
+  [self.feelingField addItemsWithTitles:@[ @"happy", @"一般般", @"sad" ]];
+  self.feelingField.font = [NSFont systemFontOfSize:12];
+  self.feelingField.bezelStyle = NSBezelStyleRounded;
+  [self.stopFormView addSubview:self.feelingField];
 
   self.continueButton = [self bubbleButtonWithFrame:NSMakeRect(0, 0, 88, 30)
                                               title:@"继续"
@@ -656,7 +669,7 @@ static CGEventRef YijiInputEventTapCallback(CGEventTapProxy proxy, CGEventType t
 }
 
 - (void)buildReviewPanel {
-  NSRect frame = NSMakeRect(0, 0, 720, 680);
+  NSRect frame = NSMakeRect(0, 0, 840, 740);
   self.reviewPanel = [[NSPanel alloc] initWithContentRect:frame
                                                 styleMask:NSWindowStyleMaskTitled | NSWindowStyleMaskClosable
                                                   backing:NSBackingStoreBuffered
@@ -670,19 +683,19 @@ static CGEventRef YijiInputEventTapCallback(CGEventTapProxy proxy, CGEventType t
   contentView.layer.backgroundColor = [NSColor colorWithCalibratedRed:1.0 green:0.98 blue:0.94 alpha:1.0].CGColor;
   self.reviewPanel.contentView = contentView;
 
-  self.reviewTitleLabel = [self labelWithFrame:NSMakeRect(24, 638, 420, 24) fontSize:22 weight:NSFontWeightSemibold];
+  self.reviewTitleLabel = [self labelWithFrame:NSMakeRect(24, 698, 420, 24) fontSize:22 weight:NSFontWeightSemibold];
   [contentView addSubview:self.reviewTitleLabel];
 
-  NSTextField *subtitle = [self labelWithFrame:NSMakeRect(24, 610, 520, 18) fontSize:12 weight:NSFontWeightRegular];
+  NSTextField *subtitle = [self labelWithFrame:NSMakeRect(24, 670, 620, 18) fontSize:12 weight:NSFontWeightRegular];
   subtitle.stringValue = @"今天和这周的努力，都会在这里长成看得见的战果。";
   subtitle.textColor = [NSColor colorWithCalibratedRed:0.38 green:0.44 blue:0.40 alpha:1.0];
   [contentView addSubview:subtitle];
 
-  self.reviewSummaryLabel = [self labelWithFrame:NSMakeRect(24, 576, 620, 20) fontSize:13 weight:NSFontWeightMedium];
+  self.reviewSummaryLabel = [self labelWithFrame:NSMakeRect(24, 636, 760, 20) fontSize:13 weight:NSFontWeightMedium];
   self.reviewSummaryLabel.textColor = [NSColor colorWithCalibratedRed:0.22 green:0.27 blue:0.24 alpha:1.0];
   [contentView addSubview:self.reviewSummaryLabel];
 
-  self.timelineView = [[YijiTimelineView alloc] initWithFrame:NSMakeRect(24, 24, 672, 532)];
+  self.timelineView = [[YijiTimelineView alloc] initWithFrame:NSMakeRect(24, 24, 792, 592)];
   self.timelineView.wantsLayer = YES;
   self.timelineView.layer.backgroundColor = [NSColor colorWithCalibratedRed:1.0 green:0.995 blue:0.985 alpha:1.0].CGColor;
   self.timelineView.layer.cornerRadius = 18;
@@ -1056,7 +1069,7 @@ static CGEventRef YijiInputEventTapCallback(CGEventTapProxy proxy, CGEventType t
   self.startOptionsView.hidden = YES;
   self.stopFormView.hidden = NO;
   self.outcomeField.string = @"";
-  self.feelingField.string = @"";
+  [self.feelingField selectItemWithTitle:@"一般般"];
   self.bubbleView.hidden = NO;
 }
 
@@ -1100,7 +1113,7 @@ static CGEventRef YijiInputEventTapCallback(CGEventTapProxy proxy, CGEventType t
 - (void)finishStop:(id)sender {
   self.shouldQuitAfterAction = NO;
   self.lastEntertainmentReminderTaskId = nil;
-  [self appendCompletedEntryWithOutcome:self.outcomeField.string feeling:self.feelingField.string];
+  [self appendCompletedEntryWithOutcome:self.outcomeField.string feeling:self.feelingField.titleOfSelectedItem];
   self.activeTaskLabel = nil;
   self.activeTaskStart = nil;
   [self recordActivityNow];
@@ -1247,11 +1260,11 @@ static CGEventRef YijiInputEventTapCallback(CGEventTapProxy proxy, CGEventType t
       if (entertainmentDuration >= kEntertainmentReminderSeconds &&
           ![self.lastEntertainmentReminderTaskId isEqualToString:taskId]) {
         self.lastEntertainmentReminderTaskId = taskId;
-        [self showReminderBubbleWithTitle:@"喵，不是说好要带咪发AER的吗？"
-                                  message:@"娱乐已经满 1 小时啦。双击一姬关掉这条提醒，想继续还是收工都由你。"];
+        [self showReminderBubbleWithTitle:@"娱乐超过一小时"
+                                  message:@"喵，不是说好带咪发AER的吗"];
+        return;
       }
     }
-    return;
   }
 
   NSDate *lastActivity = self.lastObservedActivityAt;
@@ -1276,8 +1289,13 @@ static CGEventRef YijiInputEventTapCallback(CGEventTapProxy proxy, CGEventType t
 
   if (!self.idleReminderShownForCurrentIdlePeriod) {
     self.idleReminderShownForCurrentIdlePeriod = YES;
-    [self showReminderBubbleWithTitle:@"喵，人在干什么？"
-                              message:@"已经 20 分钟没有键盘或鼠标动静啦。双击一姬，我就当你回来继续上班班了。"];
+    if (self.activeTaskLabel.length > 0) {
+      [self showReminderBubbleWithTitle:@"喵，人在干什么？"
+                                message:@"这一段已经 20 分钟没有键盘或鼠标动静啦。如果做完了，双击一姬收工吧。"];
+    } else {
+      [self showReminderBubbleWithTitle:@"喵，人在干什么？"
+                                message:@"已经 20 分钟没有键盘或鼠标动静啦。双击一姬，我就当你回来继续上班班了。"];
+    }
   }
 }
 
